@@ -21,10 +21,12 @@ focused on the **code** and **data** behind the project.
 # (2) Install pytorch. (This code was written using Pytorch 1.1) Follow directions at
 # https://pytorch.org/.
 
-# (3) Install other Python dependencies using pip:
+# (3) Install CLIP
+
+# (4) Install other Python dependencies using pip:
 pip install -r requirements.txt
 
-# (4) Retrieve external data. (Our data is already in subfolders of data/; this is for
+# (5) Retrieve external data. (Our data is already in subfolders of data/; this is for
 # larger blobs like GloVe.) This script also makes some directories we'll need.
 ./scripts/get_data.sh
 ```
@@ -33,6 +35,12 @@ pip install -r requirements.txt
 
 ```bash
 # Note that per-datum results for the programs below are written to data/results/
+
+# Get clip embeddings
+python -m pc.get_clip_embeddings
+
+# Run MLP training experiments with clip embeddings
+python -m pc.clip_experiments
 
 # Run the baselines: random and majority.
 python -m pc.baselines

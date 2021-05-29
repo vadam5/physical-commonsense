@@ -20,6 +20,7 @@ from typing import List, Tuple, Set, Dict, Any, Optional, NamedTuple, Iterator
 
 import numpy as np
 import pandas as pd
+import pickle as pkl
 from tqdm import tqdm
 
 #
@@ -243,6 +244,8 @@ class Variant(Enum):
     Glove = auto()
     DepEmbs = auto()
     Elmo = auto()
+    Clip_Text = auto()
+    Clip_Full = auto()
 
 
 def _get_wordembedding_name_map(path: str) -> Dict[str, str]:
@@ -365,11 +368,30 @@ def _ctx_emb(task: Task, labels: List[str], archive_path: str) -> np.ndarray:
         idx = _uids2sentidx(task, labels)
         return matrix[idx]
 
-
 def elmo(task: Task, labels: List[str]) -> np.ndarray:
     return _ctx_emb(task, labels, "data/elmo/sentences.elmo.npz")
 
+def clip_text(task: Task, labels: List[str]) -> np.ndarray:
+    return _ctx_emb(task, labels, "data/clip/sentences.clip_text.npz")
 
+def _clip_full_emb(task: Task, labels: List[str], archive_path) -> np.ndarray:
+    label_to_idx = pkl.load(open("data/clip/labels_to_idx.pkl", "rb"))
+    idx = np.array([label_to_idx[task][label] for label in labels])
+
+    with np.load(archive_path) as archive:
+        matrix = archive["matrix"]
+        return matrix[idx]
+
+def clip_full(task: Task, labels: List[str]) -> np.ndarray:
+    if task is Task.Situated_ObjectsProperties:
+        return _clip_full_emb(task, labels, "data/clip/sentences.clip_obj_prop_full.npz")
+    elif task is Task.Situated_ObjectsAffordances:
+        return _clip_full_emb(task, labels, "data/clip/sentences.clip_obj_aff_full.npz")
+    elif task is Task.Situated_AffordancesProperties:
+        return _clip_full_emb(task, labels, "data/clip/sentences.clip_aff_prop_full.npz") 
+    else:
+        raise ValueError("Unknown task: {}".format(task))
+        
 def features(task: Task, variant: Variant, x_labels: List[str]) -> np.ndarray:
     """Returns the (n, d) feature matrix for x_labels on task using variant."""
     if variant is Variant.Glove:
@@ -378,6 +400,10 @@ def features(task: Task, variant: Variant, x_labels: List[str]) -> np.ndarray:
         return dep_embs(task, x_labels)
     elif variant is Variant.Elmo:
         return elmo(task, x_labels)
+    elif variant is Variant.Clip_Text:
+        return clip_text(task, x_labels)
+    elif variant is Variant.Clip_Full:
+        return clip_full(task, x_labels)
     else:
         raise ValueError("Unknown task: {}".format(task))
 

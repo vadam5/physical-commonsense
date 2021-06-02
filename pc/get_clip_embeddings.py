@@ -219,7 +219,6 @@ def merge_aff_prop_img_sent_feats(image_feats, sent_feats, image_names, label_to
 def get_property_images(image_names, imgid2file):
     label_df = pd.read_csv("data/pc/situated-properties.csv", index_col="objectUID")
     property_to_image = {}
-    for prop in label_df
     
     
 

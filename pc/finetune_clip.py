@@ -229,7 +229,7 @@ def make_epoch_runner(
             viz.add_scalar("F1/{}/macro/{}".format(split, cat), macro_f1, global_i)
         viz.flush()
 
-        return metrics_results
+        return metrics_results, model
 
     return epoch
 
@@ -302,7 +302,14 @@ def main() -> None:
     )
 
     run_time_str = datetime.now().strftime("%y-%m-%d_%H-%M-%S")
-    viz = SummaryWriter("runs/bert/{}/{}".format(args.task, run_time_str))
+    viz = SummaryWriter("runs/clip/{}/{}".format(args.task, run_time_str))
+
+    if args.gan_imgs:
+        image_state = "gan_imgs"
+    elif args.text_only:
+        image_state = "text_only"
+    else:
+        image_state = "mscoco_imgs"
 
     global_i = 0
     epoch = make_epoch_runner(task, device, model, loss_fn, optimizer, scheduler, viz, args.text_only)
@@ -313,17 +320,30 @@ def main() -> None:
         epoch(train_loader, len(train_dataset), True, "train", global_i, args.text_only)
         global_i += len(train_dataset)
     print("Running eval after {} epochs.".format(train_epochs))
-    metrics_results = epoch(test_loader, len(test_dataset), False, "test", global_i, args.text_only)
-    viz.flush()
+    metrics_results, model = epoch(test_loader, len(test_dataset), False, "test", global_i, args.text_only)
+
+    #Save model and results
+    if not os.path.exists(f"runs/clip/{args.task}"):
+        os.mkdir(f"runs/clip/{args.task}")
+    model.save(f"runs/clip/{args.task}/{image_state}_clip_classifier.pt")
 
     # write per-datum results to file
-    _, _, _, _, per_datum = metrics_results
+    _, micro_f1, macro_f1s, _, per_datum = metrics_results
+    
+    with open(f"runs/clip/{args.task}/{image_state}_test_results.txt", "w") as r:
+        r.write(f"micro f1: {micro_f1}")
+        for cat, macro_f1 in macro_f1s.items():
+            r.write(f"{cat}: {macro_f1}")
+
+        r.close()
+
     path = os.path.join(
-        "data", "results", "{}-{}-perdatum.txt".format("Bert", TASK_MEDIUMHAND[task])
+        "data", "results", "{}-{}-perdatum.txt".format("clip", TASK_MEDIUMHAND[task])
     )
     with open(path, "w") as f:
         f.write(util.np2str(per_datum) + "\n")
 
+    viz.flush()
 
 if __name__ == "__main__":
     main()
